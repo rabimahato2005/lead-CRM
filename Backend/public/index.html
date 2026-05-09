@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeadCRM — Admin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!--login screen-->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark">LC</div>
+      <div class="logo-text">Lead<span>CRM</span></div>
+    </div>
+    <h1 class="login-heading">Welcome back,<br/>Admin</h1>
+    <p class="login-sub">Sign in to manage your client leads.</p>
+
+    <div class="form-group">
+      <label>Username</label>
+      <input id="login-user" type="text" placeholder="admin" autocomplete="username" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">🔐 Sign In</button>
+    <p class="error-msg" id="login-err"></p>
+  </div>
+</div>
+
+<!--MAIN APP-->
+<div id="app" style="display:none;">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">LC</div>
+      <div class="brand">Lead<span>CRM</span></div>
+    </div>
+
+    <nav>
+      <div class="nav-section-label">Main</div>
+      <div class="nav-item active" data-view="dashboard" onclick="switchView('dashboard',this)">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-view="leads" onclick="switchView('leads',this)">
+        <span class="nav-icon">👥</span> All Leads
+        <span class="nav-badge" id="lead-count">0</span>
+      </div>
+
+      <div class="nav-section-label">By Status</div>
+      <div class="nav-item" data-view="leads" data-filter="new" onclick="switchView('leads',this,'new')">
+        <span class="nav-icon">🆕</span> New
+      </div>
+      <div class="nav-item" data-view="leads" data-filter="contacted" onclick="switchView('leads',this,'contacted')">
+        <span class="nav-icon">📞</span> Contacted
+      </div>
+      <div class="nav-item" data-view="leads" data-filter="converted" onclick="switchView('leads',this,'converted')">
+        <span class="nav-icon">✅</span> Converted
+      </div>
+      <div class="nav-item" data-view="leads" data-filter="lost" onclick="switchView('leads',this,'lost')">
+        <span class="nav-icon">❌</span> Lost
+      </div>
+
+      <div class="nav-section-label">Tools</div>
+      <div class="nav-item" onclick="openAddLead()">
+        <span class="nav-icon">➕</span> Add Lead
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="admin-chip">
+        <div class="admin-avatar" id="admin-avatar">A</div>
+        <div>
+          <div class="admin-name" id="admin-name">Admin</div>
+          <div class="admin-role">Administrator</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;" onclick="doLogout()">🚪 Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-right">
+        <button class="btn btn-primary btn-sm" onclick="openAddLead()">+ New Lead</button>
+      </div>
+    </header>
+
+    <div class="page-content">
+
+      <!-- ── Dashboard View ── -->
+      <section class="view active" id="view-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card new">
+            <div class="stat-label">New Leads</div>
+            <div class="stat-value" id="s-new">—</div>
+            <div class="stat-delta">Awaiting contact</div>
+          </div>
+          <div class="stat-card contacted">
+            <div class="stat-label">Contacted</div>
+            <div class="stat-value" id="s-contacted">—</div>
+            <div class="stat-delta">In progress</div>
+          </div>
+          <div class="stat-card converted">
+            <div class="stat-label">Converted</div>
+            <div class="stat-value" id="s-converted">—</div>
+            <div class="stat-delta">Closed won</div>
+          </div>
+          <div class="stat-card lost">
+            <div class="stat-label">Lost</div>
+            <div class="stat-value" id="s-lost">—</div>
+            <div class="stat-delta">Closed lost</div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dash-card">
+            <h3>Recent Leads</h3>
+            <div id="recent-leads"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Lead Sources</h3>
+            <div id="lead-sources"></div>
+          </div>
+          <div class="dash-card" style="grid-column:1/-1;">
+            <h3>📅 Upcoming Follow-ups</h3>
+            <div id="follow-ups"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Leads View ── -->
+      <section class="view" id="view-leads">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <span class="icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Search by name, email, company…" oninput="filterLeads()" />
+          </div>
+          <div class="filter-bar">
+            <button class="filter-btn active" data-status="all"      onclick="setFilter('all',this)">All</button>
+            <button class="filter-btn"        data-status="new"      onclick="setFilter('new',this)">New</button>
+            <button class="filter-btn"        data-status="contacted" onclick="setFilter('contacted',this)">Contacted</button>
+            <button class="filter-btn"        data-status="converted" onclick="setFilter('converted',this)">Converted</button>
+            <button class="filter-btn"        data-status="lost"     onclick="setFilter('lost',this)">Lost</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddLead()">+ Add Lead</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name / Email</th>
+                <th>Company</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leads-tbody">
+              <tr><td colspan="7"><div class="empty-state"><div class="icon">🌀</div><p>Loading leads…</p></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!--MODALS -->
+
+<!-- Add / Edit Lead -->
+<div class="modal-overlay" id="modal-lead">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-lead-title">Add New Lead</h2>
+      <button class="modal-close" onclick="closeModal('modal-lead')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lead-id" />
+      <div class="detail-grid">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input id="f-name" type="text" placeholder="Your Name" />
+        </div>
+        <div class="form-group">
+          <label>Email *</label>
+          <input id="f-email" type="email" placeholder="example@gmail.com" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input id="f-phone" type="tel" placeholder="+91 xxxxx xxxxx" />
+        </div>
+        <div class="form-group">
+          <label>Company</label>
+          <input id="f-company" type="text" placeholder="TechCorp" />
+        </div>
+        <div class="form-group">
+          <label>Source</label>
+          <select id="f-source">
+            <option>Website</option>
+            <option>LinkedIn</option>
+            <option>Referral</option>
+            <option>Cold Email</option>
+            <option>Event</option>
+            <option>Manual</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="converted">Converted</option>
+            <option value="lost">Lost</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="f-priority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Message / Notes</label>
+        <textarea id="f-message" rows="3" placeholder="Initial inquiry or notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-lead')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveLead()">💾 Save Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Detail / Notes -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-header">
+      <h2 id="detail-lead-name">Lead Details</h2>
+      <button class="modal-close" onclick="closeModal('modal-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body">Loading…</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-detail')">Close</button>
+      <button class="btn btn-danger btn-sm"  id="detail-delete-btn">🗑 Delete Lead</button>
+      <button class="btn btn-success btn-sm" id="detail-edit-btn">✏️ Edit Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
