@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doorlist</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+
+<div id="app" class="wrap">
+  <header class="top">
+    <div class="name">
+      <label class="label" for="evname">Event</label>
+      <input id="evname" class="evname" type="text" value="Untitled event" maxlength="80" autocomplete="off">
+    </div>
+    <div class="tally" aria-live="polite">
+      <span class="label">Arrived</span>
+      <div class="nums" id="nums">0 <small>of 0</small></div>
+      <div class="bar"><i id="barfill"></i></div>
+    </div>
+  </header>
+  <div id="notice" class="notice" hidden></div>
+
+  <nav class="tabs" aria-label="Sections">
+    <a href="#checkin" data-tab="checkin">Check in</a>
+    <a href="#guests" data-tab="guests">Guests</a>
+    <a href="#add" data-tab="add">Add guests</a>
+  </nav>
+
+  <section id="v-checkin" class="panel">
+    <div>
+      <label class="label" for="code">Ticket code</label>
+      <form id="scanform" class="scan" autocomplete="off">
+        <input id="code" type="text" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="Type, or point a USB scanner here" maxlength="40">
+        <button class="primary" type="submit">Check in</button>
+      </form>
+    </div>
+    <div class="row">
+      <button type="button" id="opencamera" class="primary">Open live camera</button>
+      <label class="btn" for="photo">Scan QR from a photo</label>
+      <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+      <span class="hint" id="photohint">Use the live camera or take a QR photo.</span>
+    </div>
+    <div id="camera" class="camera" hidden>
+      <video id="cameraVideo" autoplay muted playsinline></video>
+      <div class="camera-guide"></div>
+    </div>
+    <div id="cameraStatus" class="camera-status" hidden>
+      <span class="hint" id="cameraHint">Point the camera at the QR code.</span>
+      <button type="button" id="closecamera" class="small">Close camera</button>
+    </div>
+    <div id="result" class="result" aria-live="assertive">
+      <div class="big muted">Ready</div>
+      <div class="sub muted">Enter a code or scan a ticket to see the result here.</div>
+    </div>
+    <div>
+      <h2>Latest arrivals</h2>
+      <ul id="recent" class="recent"></ul>
+    </div>
+  </section>
+
+  <section id="v-guests" class="panel" hidden>
+    <div class="row">
+      <input id="q" class="grow" type="search" placeholder="Search name, email or code" aria-label="Search guests">
+      <div class="chips" role="group" aria-label="Filter">
+        <button type="button" data-f="all" aria-pressed="true" class="small">All</button>
+        <button type="button" data-f="in" aria-pressed="false" class="small">Arrived</button>
+        <button type="button" data-f="out" aria-pressed="false" class="small">Waiting</button>
+      </div>
+      <button type="button" id="export" class="small">Export CSV</button>
+    </div>
+    <div id="glist"></div>
+  </section>
+
+  <section id="v-add" class="panel" hidden>
+    <h2>Add one guest</h2>
+    <form id="addform" class="row" autocomplete="off">
+      <input id="gname" class="grow" type="text" placeholder="Name" required aria-label="Guest name">
+      <input id="gemail" class="grow" type="email" placeholder="Email (optional)" aria-label="Guest email">
+      <input id="gticket" class="ticket-type" type="text" placeholder="Ticket type" value="General" aria-label="Ticket type">
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <h2>Import a list</h2>
+    <p class="hint flush">Paste rows or choose a CSV file. Columns: name, email, ticket type. A header row is optional.</p>
+    <textarea id="paste" placeholder="Priya Nair, priya@example.com, VIP&#10;Rahul Gupta, rahul@example.com, General" aria-label="Guest list"></textarea>
+    <div class="row">
+      <label class="btn" for="csvfile">Choose CSV file</label>
+      <input id="csvfile" type="file" accept=".csv,text/csv,text/plain" hidden>
+      <button class="primary" id="doimport" type="button">Import list</button>
+      <span id="importmsg" class="hint"></span>
+    </div>
+    <hr class="divider">
+    <div class="row">
+      <button type="button" id="sample" class="small">Add 6 sample guests</button>
+      <button type="button" id="wipe" class="small danger">Delete all guests</button>
+    </div>
+  </section>
+</div>
+
+<section id="auth" class="panel auth-panel" hidden aria-labelledby="authTitle">
+  <h2 id="authTitle">Sign in to the shared guest list</h2>
+  <p class="hint flush">Only staff invited to this Supabase project can sign in. A link will be sent to your email.</p>
+  <form id="signinForm" class="row" autocomplete="on">
+    <input id="authEmail" class="grow" type="email" placeholder="Staff email" required autocomplete="email" aria-label="Staff email">
+    <button id="signin" class="primary" type="submit">Send sign-in link</button>
+  </form>
+  <div id="authSession" class="row" hidden>
+    <span id="authUser" class="hint"></span>
+    <button id="signout" type="button" class="small">Sign out</button>
+  </div>
+  <p id="authMessage" class="hint flush" aria-live="polite"></p>
+</section>
+
+<div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-label="Guest ticket">
+  <div class="card">
+    <div class="row row-between"><h2 id="sheetname"></h2><button type="button" class="small" id="sheetclose">Close</button></div>
+    <img id="ticketimg" alt="Ticket with QR code">
+    <div class="row">
+      <button type="button" class="primary" id="dlticket">Download ticket image</button>
+      <button type="button" id="copymail">Copy email text</button>
+      <a class="btn" id="mailto" href="#" target="_blank" rel="noopener">Open email app</a>
+    </div>
+    <p class="hint flush">Email apps cannot receive an attachment from this page. Download the ticket image, then attach it to your message. If the download is unavailable, press and hold the image to save it.</p>
+  </div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
