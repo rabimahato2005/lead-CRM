@@ -4,8 +4,12 @@ create table if not exists public.doorlist_guests (
   email text not null default '',
   ticket text not null default 'General',
   checked_in_at timestamptz,
+  checked_out_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.doorlist_guests
+  add column if not exists checked_out_at timestamptz;
 
 create table if not exists public.doorlist_event (
   id integer primary key check (id = 1),

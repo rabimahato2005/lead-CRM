@@ -18,7 +18,7 @@
       <input id="evname" class="evname" type="text" value="Untitled event" maxlength="80" autocomplete="off">
     </div>
     <div class="tally" aria-live="polite">
-      <span class="label">Arrived</span>
+      <span class="label">On site</span>
       <div class="nums" id="nums">0 <small>of 0</small></div>
       <div class="bar"><i id="barfill"></i></div>
     </div>
@@ -68,8 +68,9 @@
       <input id="q" class="grow" type="search" placeholder="Search name, email or code" aria-label="Search guests">
       <div class="chips" role="group" aria-label="Filter">
         <button type="button" data-f="all" aria-pressed="true" class="small">All</button>
-        <button type="button" data-f="in" aria-pressed="false" class="small">Arrived</button>
+        <button type="button" data-f="in" aria-pressed="false" class="small">Present</button>
         <button type="button" data-f="out" aria-pressed="false" class="small">Waiting</button>
+        <button type="button" data-f="checkedout" aria-pressed="false" class="small">Checked out</button>
       </div>
       <button type="button" id="export" class="small">Export CSV</button>
     </div>

@@ -25,6 +25,7 @@
     if(m)s=m[1];
     return s.replace(/[\s-]/g,"");
   }
+  function isPresent(g){return !!g.checkedInAt&&!g.checkedOutAt}
 
   /* ---------- storage ---------- */
   function persist(){
@@ -64,11 +65,13 @@
   function toCloudGuest(g){
     return {code:g.code,name:g.name,email:g.email||"",ticket:g.ticket||"General",
       checked_in_at:g.checkedInAt?new Date(g.checkedInAt).toISOString():null,
+      checked_out_at:g.checkedOutAt?new Date(g.checkedOutAt).toISOString():null,
       created_at:new Date(g.createdAt||Date.now()).toISOString()};
   }
   function fromCloudGuest(g){
     return {code:g.code,name:g.name,email:g.email||"",ticket:g.ticket||"General",
       checkedInAt:g.checked_in_at?new Date(g.checked_in_at).getTime():null,
+      checkedOutAt:g.checked_out_at?new Date(g.checked_out_at).getTime():null,
       createdAt:g.created_at?new Date(g.created_at).getTime():Date.now()};
   }
   async function loadSharedData(){
@@ -87,9 +90,6 @@
     if(event.error)throw event.error;
     if(event.data){
       eventName=event.data.name||eventName;
-    }else if(r.kind==="error"){
-      el.className="result none";
-      el.innerHTML='<div class="big">Check-in not saved</div><div class="sub">'+esc(r.message)+'</div>';
     }else{
       var savedEvent=await cloud.from("doorlist_event").upsert({id:1,name:eventName});
       if(savedEvent.error)throw savedEvent.error;
@@ -205,9 +205,9 @@
     if(!code){return}
     var g=guests.get(code);
     if(!g){lastResult={kind:"none",code:code};renderResult();toast("Wrong QR — this code doesn't match any guest on the list.");return}
-    if(g.checkedInAt){lastResult={kind:"dup",g:g};renderResult();return}
-    var up=Object.assign({},g,{checkedInAt:Date.now()});
-    lastResult={kind:"ok",g:up};
+    if(isPresent(g)){lastResult={kind:"dup",g:g};renderResult();return}
+    var up=Object.assign({},g,{checkedInAt:Date.now(),checkedOutAt:null});
+    lastResult={kind:"ok",g:up,returning:!!g.checkedOutAt};
     guests.set(code,up);render();
     renderResult();
     var saving=put(up);
@@ -223,10 +223,13 @@
     if(!r)return;
     if(r.kind==="ok"){
       el.className="result ok";
-      el.innerHTML='<div class="big">Checked in</div><div class="who">'+esc(r.g.name)+'</div><div class="sub">'+esc(r.g.ticket||"General")+' · '+fmt(r.g.checkedInAt)+'</div>';
+      el.innerHTML='<div class="big">'+(r.returning?"Checked back in":"Checked in")+'</div><div class="who">'+esc(r.g.name)+'</div><div class="sub">'+esc(r.g.ticket||"General")+' · '+fmt(r.g.checkedInAt)+'</div>';
     }else if(r.kind==="dup"){
       el.className="result dup";
       el.innerHTML='<div class="big">Already checked in</div><div class="who">'+esc(r.g.name)+'</div><div class="sub">Arrived at '+fmt(r.g.checkedInAt)+'. Do not admit twice without checking.</div>';
+    }else if(r.kind==="error"){
+      el.className="result none";
+      el.innerHTML='<div class="big">Check-in not saved</div><div class="sub">'+esc(r.message)+'</div>';
     }else{
       el.className="result none";
       el.innerHTML='<div class="big">Wrong QR / no match</div><div class="sub mono">'+esc(r.code)+'</div><div class="sub">This code does not match a guest on the list. Check the QR code or search the Guests tab.</div>';
@@ -314,10 +317,11 @@
 
   /* ---------- rendering ---------- */
   function render(){
-    var all=Array.from(guests.values()),inn=all.filter(function(g){return g.checkedInAt});
+    var all=Array.from(guests.values()),inn=all.filter(isPresent);
     $("nums").innerHTML=inn.length+' <small>of '+all.length+'</small>';
     $("barfill").style.width=(all.length?Math.round(inn.length/all.length*100):0)+"%";
-    var rec=inn.slice().sort(function(a,b){return b.checkedInAt-a.checkedInAt}).slice(0,6);
+    var rec=all.filter(function(g){return g.checkedInAt})
+      .sort(function(a,b){return b.checkedInAt-a.checkedInAt}).slice(0,6);
     $("recent").innerHTML=rec.length?rec.map(function(g){return '<li><span>'+esc(g.name)+' <span class="muted">· '+esc(g.ticket||"General")+'</span></span><span class="t">'+fmt(g.checkedInAt)+'</span></li>'}).join(""):'<li class="muted">Nobody has arrived yet.</li>';
     renderGuests(all);
     if(document.activeElement!==$("evname"))$("evname").value=eventName;
@@ -325,8 +329,9 @@
   function renderGuests(all){
     var q=$("q").value.trim().toLowerCase();
     var list=all.filter(function(g){
-      if(filter==="in"&&!g.checkedInAt)return false;
+      if(filter==="in"&&!isPresent(g))return false;
       if(filter==="out"&&g.checkedInAt)return false;
+      if(filter==="checkedout"&&!g.checkedOutAt)return false;
       if(!q)return true;
       return (g.name+" "+(g.email||"")+" "+g.code).toLowerCase().indexOf(q)>-1;
     }).sort(function(a,b){return a.name.localeCompare(b.name)});
@@ -335,10 +340,12 @@
     }
     if(!list.length){$("glist").innerHTML='<div class="empty">No guests match.</div>';return}
     $("glist").innerHTML=list.map(function(g){
+      var present=isPresent(g),status=present?"Here since "+fmt(g.checkedInAt):g.checkedOutAt?"Checked out "+fmt(g.checkedOutAt):"Waiting";
+      var action=present?"Check out":g.checkedOutAt?"Check in again":"Check in";
       return '<div class="guest"><div><div class="n">'+esc(g.name)+'</div><div class="m">'+esc(g.email||"No email")+' · '+esc(g.ticket||"General")+' · <span class="mono">'+esc(g.code)+'</span></div></div>'
-        +'<span class="pill'+(g.checkedInAt?' in':'')+'">'+(g.checkedInAt?'Arrived '+fmt(g.checkedInAt):'Waiting')+'</span>'
+        +'<span class="pill'+(present?' in':g.checkedOutAt?' out':'')+'">'+esc(status)+'</span>'
         +'<div class="acts"><button class="small" data-act="ticket" data-code="'+g.code+'">Ticket</button>'
-        +'<button class="small" data-act="toggle" data-code="'+g.code+'">'+(g.checkedInAt?'Undo check-in':'Check in')+'</button>'
+        +'<button class="small" data-act="toggle" data-code="'+g.code+'">'+action+'</button>'
         +'<button class="small danger" data-act="del" data-code="'+g.code+'">Delete</button></div></div>';
     }).join("");
   }
@@ -439,7 +446,10 @@
     var code=b.dataset.code,g=guests.get(code);if(!g)return;
     if(b.dataset.act==="ticket")openSheet(code);
     else if(b.dataset.act==="toggle"){
-      var up=Object.assign({},g,{checkedInAt:g.checkedInAt?null:Date.now()});guests.set(code,up);render();
+      var up=isPresent(g)
+        ?Object.assign({},g,{checkedOutAt:Date.now()})
+        :Object.assign({},g,{checkedInAt:Date.now(),checkedOutAt:null});
+      guests.set(code,up);render();
       put(up).then(function(saved){if(saved===false){guests.set(code,g);render()}});
     }
     else if(b.dataset.act==="del"){
@@ -488,9 +498,10 @@
     toast("All guests deleted");
   });
   $("export").addEventListener("click",function(){
-    var rows=[["name","email","ticket","code","status","checked_in_at"]];
+    var rows=[["name","email","ticket","code","status","checked_in_at","checked_out_at"]];
     Array.from(guests.values()).sort(function(a,b){return a.name.localeCompare(b.name)}).forEach(function(g){
-      rows.push([g.name,g.email,g.ticket,g.code,g.checkedInAt?"arrived":"waiting",g.checkedInAt?new Date(g.checkedInAt).toISOString():""]);
+      rows.push([g.name,g.email,g.ticket,g.code,isPresent(g)?"present":g.checkedOutAt?"checked_out":"waiting",
+        g.checkedInAt?new Date(g.checkedInAt).toISOString():"",g.checkedOutAt?new Date(g.checkedOutAt).toISOString():""]);
     });
     var csv=rows.map(function(r){return r.map(csvCell).join(",")}).join("\n");
     if(downloads){downloads.save({filename:slug(eventName)+"-attendance.csv",data:csv}).catch(function(e){if(e&&e.code!=="declined")toast("Download unavailable here")})}

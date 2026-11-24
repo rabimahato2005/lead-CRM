@@ -74,6 +74,7 @@ button[disabled]{opacity:.5;cursor:default}
 .guest .m{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:600;background:var(--soft);color:var(--ink)}
 .pill.in{background:var(--ok-bg);color:var(--ok)}
+.pill.out{background:var(--warn-bg);color:var(--warn)}
 .acts{display:flex;gap:6px;flex-wrap:wrap;grid-column:1 / -1}
 .empty{text-align:center;padding:28px 8px;color:var(--muted)}
 .empty h2{color:var(--ink);margin-bottom:6px}
